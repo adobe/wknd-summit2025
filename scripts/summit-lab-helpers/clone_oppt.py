@@ -20,7 +20,7 @@ class AemSitesOptimizerBackoffice:
         self.base_url = base_url
         self.token = token
         self.logger = logging.getLogger(__name__)
-        logging.basicConfig(level=logging.INFO, 
+        logging.basicConfig(level=logging.DEBUG, 
                            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     
     def clone_opportunity(self, site_id, oppt_file_path):
@@ -60,7 +60,8 @@ class AemSitesOptimizerBackoffice:
                 "title": opportunity.get("title", ""),
                 "description": opportunity.get("description", ""),
                 "guidance": opportunity.get("guidance", {}),
-                "tags": opportunity.get("tags", [])
+                "tags": opportunity.get("tags", []),
+                "data": opportunity.get("data", {})
             }
             
             # Prepare headers with token if provided
