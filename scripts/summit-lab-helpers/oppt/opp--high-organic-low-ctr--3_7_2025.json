@@ -1,0 +1,109 @@
+{
+    "opportunity": {
+        "id": "7fd518e8-7b0b-441f-85fb-752b2db83b6c",
+        "siteId": "9d5ab4bc-6521-40b9-9d47-1e5d0a616fe4",
+        "auditId": "9d5ab4bc-6521-40b9-9d47-1e5d0a616000",
+        "runbook": "https://adobe.sharepoint.com/:w:/r/sites/aemsites-engineering/Shared%20Documents/3%20-%20Experience%20Success/SpaceCat/Runbooks/Experience_Success_Studio_High_Organic_Traffic_Low_CTR_Runbook.docx?d=w19613d9b93d44112b7c8dbe0d9dcc55b&csf=1&web=1&e=JEuy6A",
+        "type": "high-organic-low-ctr",
+        "data": {
+            "thumbnail": "https://m.adobe.io/v1/generations/4c8f63dc564e418c930a9c3cff912863/variations/5c68cdc58f614134b65e1a12440d76f9/thumbnail?width=256&height=256",
+            "pageViews": 8000,
+            "clickRateDecrease": 20,
+            "trackedPageKPIName": "ctr",
+            "trackedPageKPIValue": 0.15,
+            "opportunityImpact": 12,
+            "trackedKPISiteAverage": 0.25,
+            "page": "https://main--wknd-summit2025--adobe.aem.live/lab-337/_adobe-presenters/",
+            "screenshot": "https://m.adobe.io/v1/generations/4c8f63dc564e418c930a9c3cff912863/variations/5c68cdc58f614134b65e1a12440d76f9/screenshot",
+            "metrics": [
+                {
+                    "type": "traffic",
+                    "value": {
+                        "paid": 1000,
+                        "total": 2000,
+                        "earned": 1000,
+                        "owned": 1000
+                    },
+                    "vendor": "*"
+                },
+                {
+                    "type": "ctr",
+                    "value": {
+                        "page": 0.15
+                    },
+                    "vendor": "*"
+                }
+            ],
+            "projectedEngagementValue": 6000
+        },
+        "origin": "ESS_OPS",
+        "title": "High organic traffic detected, but low conversion rate",
+        "description": "The focus page is part of an adventure and travel industry website aiming for conversion. Current headers and CTAs, though aligned with the theme, present an opportunity for refined language enhancing conversion-focused messaging given the existing structure and lower CTR.",
+        "guidance": {
+            "recommendations": [
+                {
+                    "insight": "The webpage showcases curated adventure experiences, drawing considerable organic traffic. However, CTAs like 'More' and 'See Trip' do not leverage user interest fully into actionable engagement. Keywords in user searches display a strong inclination towards adventure (hike, surf, ski), while the intent is primarily for exploration and planning detailed activities. Despite a CTR around 0.197, which exceeds the average benchmark, the generic CTAs and headers fail to translate this engagement into conversions effectively, indicating room for optimization. Additionally, stronger action-oriented language in these text areas can bridge the gap between interest and decision making, inducing higher conversions.",
+                    "recommendation": "For the Hike section, change 'More' to 'Explore Hiking Trails.' This connects with a user's adventurous desire, effectively guiding them to content that satisfies their curiosity about specific hiking options. Surf section's 'More' should shift to 'Find Surf Spots,' terminology catering directly to users seeking beachfront explorations. Ski section's 'More' transitions effectively to 'Discover Ski Areas', matching with a user's intent to uncover new skiing experiences, leveraging their impetus for adventure. Finally, lead with 'Join Our Climbing Expedition' in the Climbing New Zealand section, a CTA inviting direct action and interest, aligning directly with adventurous intent. Enhancing these call-to-action portions through focused, targeted phrasing creates an improved user journey from interest to conversion.",
+                    "type": "guidance",
+                    "rationale": "Clearer and more directed headers and CTA texts are pivotal to convert the existing high visitor engagement into tangible actions. Precise language correlating directly with search intent will capitalize on current interest levels, guiding users through a more intuitive exploration path. Employing definitive language in CTAs aligns navigation with user expectations and optimizes the conversion funnel, improving the travel and adventure content's effectiveness in meeting user expectations and expanding engagement opportunities."
+                }
+            ]
+        },
+        "tags": [
+            "ctr"
+        ],
+        "status": "NEW",
+        "createdAt": "2025-03-06T00:00:50.987Z",
+        "updatedAt": "2025-03-07T20:09:53.505Z"
+    },
+    "suggestions": [
+        {
+            "id": "d8fa88e8-52e4-426b-8da1-e15d148eaf9d",
+            "opportunityId": "7fd518e8-7b0b-441f-85fb-752b2db83b6c",
+            "type": "CONTENT_UPDATE",
+            "rank": 1,
+            "status": "NEW",
+            "data": {
+                "variations": [
+                    {
+                        "name": "Variation1",
+                        "changes": [
+                            {
+                                "type": "text",
+                                "element": null,
+                                "text": "CTA Text"
+                            }
+                        ],
+                        "variationEditPageUrl": "https://docs.google.com/document/d/1JsI492epCL2b8AAACXUENxDebAABoBJa79wt53iz2-E/edit?tab=t.0",
+                        "id": "7c85d0ac-6389-4622-929f-d56c14548e15",
+                        "variationPageUrl": "https://main--wknd-summit2025--adobe.aem.page/lab-337/_adobe-presenters/index-aemoptimizer-improve-ctr",
+                        "explanation": "Clearer and more directed headers and CTA texts are pivotal to convert the existing high visitor engagement into tangible actions. ",
+                        "projectedImpact": "0.25",
+                        "previewImage": "https://m.adobe.io/v1/generations/4c8f63dc564e418c930a9c3cff912863/variations/5c68cdc58f614134b65e1a12440d76f9/thumbnail?width=256&height=256"
+                    },
+                    {
+                        "name": "Original",
+                        "changes": [
+                            {
+                                "type": "text",
+                                "element": null,
+                                "text": "No Changes on Original Page"
+                            }
+                        ],
+                        "variationEditPageUrl": "https://experience-platform-mystique-deploy-ethos102-stage-88229c.stage.cloud.adobe.io/v1/generations/b4c802a1119d4f27aacbf69c3ecf687a/variations/9e4aaa5fbb0f44c7b5cdfdb02a2b6133/screenshot",
+                        "id": "2ab7e894-1789-427f-883b-c69cfa0d0273",
+                        "variationPageUrl": "https://main--wknd-summit2025--adobe.aem.live/lab-337/_adobe-presenters/",
+                        "explanation": "The live original version when the opportunity was created.",
+                        "projectedImpact": "0",
+                        "previewImage": "https://m.adobe.io/v1/generations/4c8f63dc564e418c930a9c3cff912863/variations/19764ec271484e0691c7ca6495561255/thumbnail?width=256&height=256"
+                    }
+                ]
+            },
+            "kpiDeltas": {
+                "estimatedKPILift": 0
+            },
+            "createdAt": "2025-03-06T00:00:52.488Z",
+            "updatedAt": "2025-03-06T21:11:07.220Z"
+        }
+    ]
+}

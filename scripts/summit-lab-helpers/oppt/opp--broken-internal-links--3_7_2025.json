@@ -1,0 +1,44 @@
+{
+    "opportunity": {
+        "id": "6a58652b-5685-4481-8950-8c3309590d54",
+        "siteId": "9d5ab4bc-6521-40b9-9d47-1e5d0a616fe4",
+        "runbook": "https://adobe.sharepoint.com/:w:/r/sites/aemsites-engineering/Shared%20Documents/3%20-%20Experience%20Success/SpaceCat/Runbooks/Experience_Success_Studio_Broken_Internal_Links_Runbook.docx?d=w4359a9a17db14915855218c763409d08&csf=1&web=1&e=btlNgm",
+        "type": "broken-internal-links",
+        "data": {
+            "projectedTrafficLost": 10000,
+            "projectedTrafficValue": 800
+        },
+        "origin": "ESS_OPS",
+        "title": "Broken Internal Link",
+        "description": "Broken Internal link",
+        "tags": [
+            " broken-link",
+            "seo"
+        ],
+        "status": "NEW",
+        "createdAt": "2025-03-07T20:18:43.093Z",
+        "updatedAt": "2025-03-07T20:18:43.095Z"
+    },
+    "suggestions": [
+        {
+            "id": "a31ad56a-644d-4ba1-b4f0-c4e75db9f378",
+            "opportunityId": "6a58652b-5685-4481-8950-8c3309590d54",
+            "type": "REDIRECT_UPDATE",
+            "rank": 10000,
+            "status": "NEW",
+            "data": {
+                "urlSuggested": null,
+                "urlsSuggested": [
+                    "https://main--wknd-summit2025--adobe.aem.live/adventures/climbing-new-zealand"
+                ],
+                "trafficDomain": "10000",
+                "aiRationale": "found new link matching the source",
+                "urlFrom": "main--wknd-summit2025--adobe.aem",
+                "urlTo": "https://main--wknd-summit2025--adobe.aem.page/adventures/new-zealand-climbing",
+                "priority": "high"
+            },
+            "createdAt": "2025-03-07T20:18:44.628Z",
+            "updatedAt": "2025-03-07T20:18:44.628Z"
+        }
+    ]
+}

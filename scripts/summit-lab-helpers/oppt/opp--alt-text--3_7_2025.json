@@ -1,0 +1,110 @@
+{
+    "opportunity": {
+        "id": "484726c3-1a27-49c0-a2d6-01d79fd9fbc5",
+        "siteId": "9d5ab4bc-6521-40b9-9d47-1e5d0a616fe4",
+        "auditId": "9d5ab4bc-6521-40b9-9d47-1e5d0a616000",
+        "runbook": "https://adobe.sharepoint.com/:w:/r/sites/aemsites-engineering/Shared%20Documents/3%20-%20Experience%20Success/SpaceCat/Runbooks/Experience_Success_Studio_High_Organic_Traffic_Low_CTR_Runbook.docx?d=w19613d9b93d44112b7c8dbe0d9dcc55b&csf=1&web=1&e=JEuy6A",
+        "type": "high-organic-low-ctr",
+        "data": {
+            "thumbnail": "https://m.adobe.io/v1/generations/4c8f63dc564e418c930a9c3cff912863/variations/5c68cdc58f614134b65e1a12440d76f9/thumbnail?width=256&height=256",
+            "clickRateDecrease": 5,
+            "pageViews": 1000,
+            "trackedPageKPIName": "CTR",
+            "trackedPageKPIValue": 0.1,
+            "opportunityImpact": 1,
+            "trackedKPISiteAverage": 1,
+            "metrics": [
+                {
+                    "type": "traffic",
+                    "value": {
+                        "paid": 1000,
+                        "total": 2000,
+                        "earned": 500,
+                        "owned": 1500
+                    },
+                    "vendor": "*"
+                },
+                {
+                    "type": "ctr",
+                    "value": {
+                        "page": 0.12
+                    },
+                    "vendor": "*"
+                }
+            ],
+            "page": "https://main--wknd-summit2025--adobe.aem.live/lab-337/_adobe-presenters.html",
+            "screenshot": "https://m.adobe.io/v1/generations/4c8f63dc564e418c930a9c3cff912863/variations/5c68cdc58f614134b65e1a12440d76f9/thumbnail?width=256&height=256",
+            "projectedEngagementValue": 7355
+        },
+        "origin": "ESS_OPS",
+        "title": "Alt Text Opportunity",
+        "description": "Missing alt text on images leads to poor seo scores, low accessibility scores and search engine failing to surface such images with keyword search",
+        "guidance": {
+            "recommendations": [
+                {
+                    "insight": "Alt text for images decreases accessibility and limits discoverability",
+                    "recommendation": "Add meaningful alt text on images that clearly articulate the subject matter of the image",
+                    "type": "guidance",
+                    "rationale": "Alt text for images is vital to ensure your content is discoverable and usable for many people as possible"
+                }
+            ]
+        },
+        "tags": [
+            " seo",
+            "accessibility"
+        ],
+        "status": "NEW",
+        "createdAt": "2025-03-06T21:49:25.142Z",
+        "updatedAt": "2025-03-07T14:43:50.507Z"
+    },
+    "suggestions": [
+        {
+            "id": "1af03804-4bcd-45e3-b14c-5cd7eff1e130",
+            "opportunityId": "484726c3-1a27-49c0-a2d6-01d79fd9fbc5",
+            "type": "CONTENT_UPDATE",
+            "rank": 1,
+            "status": "NEW",
+            "data": {
+                "variations": [
+                    {
+                        "name": "New Alt Text",
+                        "changes": [
+                            {
+                                "type": "text",
+                                "element": null,
+                                "text": "Added New Alt Text For Images"
+                            }
+                        ],
+                        "variationEditPageUrl": "https://docs.google.com/document/d/1WcaYMcb-jtkrWhIgTKFDa55F8l3P6HxRbiPiuqqrQQ0/edit?tab=t.0",
+                        "id": "8a540c20-862e-4abb-b00f-c1e2f070183d",
+                        "variationPageUrl": "https://main--wknd-summit2025--adobe.aem.page/lab-337/_adobe-presenters/index-aemoptimizer-alttext",
+                        "explanation": "Page with Updated Alt Text for images",
+                        "projectedImpact": "0.05",
+                        "previewImage": "https://m.adobe.io/v1/generations/4c8f63dc564e418c930a9c3cff912863/variations/5c68cdc58f614134b65e1a12440d76f9/thumbnail?width=256&height=256"
+                    },
+                    {
+                        "name": "Original",
+                        "changes": [
+                            {
+                                "type": "text",
+                                "element": null,
+                                "text": "No Changes on Original Page"
+                            }
+                        ],
+                        "variationEditPageUrl": null,
+                        "id": "11446cdf-02d4-4fc6-b990-26427296fe1b",
+                        "variationPageUrl": "https://main--wknd-summit2025--adobe.aem.live/lab-337/_adobe-presenters/",
+                        "explanation": null,
+                        "projectedImpact": 0,
+                        "previewImage": "https://m.adobe.io/v1/generations/4c8f63dc564e418c930a9c3cff912863/variations/19764ec271484e0691c7ca6495561255/thumbnail?width=256&height=256"
+                    }
+                ]
+            },
+            "kpiDeltas": {
+                "estimatedKPILift": 0
+            },
+            "createdAt": "2025-03-06T21:49:26.554Z",
+            "updatedAt": "2025-03-06T21:54:13.010Z"
+        }
+    ]
+}
