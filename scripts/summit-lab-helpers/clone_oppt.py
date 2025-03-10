@@ -3,6 +3,7 @@
 import json
 import requests
 import logging
+from clone_oppt_file import GoogleDocCloner
 
 class AemSitesOptimizerBackoffice:
     """
@@ -32,7 +33,7 @@ class AemSitesOptimizerBackoffice:
             site_id (str): The ID of the site
             
         Returns:
-            str: A message indicating the Google Doc URL and site baseURL
+            dict: Result of the operation with status and details
         """
         self.logger.info(f"Cloning Google Doc: {google_doc_url} into site {site_id}")
         
@@ -53,17 +54,27 @@ class AemSitesOptimizerBackoffice:
                     base_url = site.get("baseURL")
                     break
             
-            if base_url:
-                self.logger.info(f"Found baseURL for site {site_id}: {base_url}")
-            else:
+            if not base_url:
                 self.logger.warning(f"No baseURL found for site {site_id}")
+                return {
+                    "success": False,
+                    "error": f"No baseURL found for site {site_id}"
+                }
                 
-            # This would be implemented to actually clone the Google Doc
-            return f"Would clone Google Doc at {google_doc_url} into site with baseURL: {base_url}"
+            self.logger.info(f"Found baseURL for site {site_id}: {base_url}")
+            
+            # Use the GoogleDocCloner to clone the document
+            cloner = GoogleDocCloner()
+            result = cloner.clone_google_doc(google_doc_url, base_url)
+            
+            return result
         
         except requests.exceptions.RequestException as e:
             self.logger.error(f"Error fetching site data: {str(e)}")
-            return f"Error: Could not fetch site data - {str(e)}"
+            return {
+                "success": False,
+                "error": f"Error fetching site data: {str(e)}"
+            }
     
     def clone_opportunity(self, site_id, oppt_file_path):
         """
@@ -145,6 +156,8 @@ class AemSitesOptimizerBackoffice:
                                     "url": variation_edit_url,
                                     "result": doc_result
                                 })
+                                # update the current variation with the new google doc url
+                                variation["variationEditPageUrl"] = doc_result["doc_url"]
                 
                 # Update opportunityId in each suggestion
                 for suggestion in suggestions:
