@@ -23,6 +23,48 @@ class AemSitesOptimizerBackoffice:
         logging.basicConfig(level=logging.DEBUG, 
                            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     
+    def clone_google_doc(self, google_doc_url, site_id):
+        """
+        Clone a Google Doc for a specific site
+        
+        Args:
+            google_doc_url (str): The URL of the Google Doc to clone
+            site_id (str): The ID of the site
+            
+        Returns:
+            str: A message indicating the Google Doc URL and site baseURL
+        """
+        self.logger.info(f"Cloning Google Doc: {google_doc_url} into site {site_id}")
+        
+        # Fetch the site data to get the baseURL
+        sites_url = "https://main--wknd-summit2025--adobe.aem.live/lab-337/lab-337-sites.json"
+        self.logger.info(f"Fetching site data from: {sites_url}")
+        
+        try:
+            response = requests.get(sites_url)
+            response.raise_for_status()  # Raise an exception for non-200 responses
+            
+            sites_data = response.json()
+            base_url = None
+            
+            # Find the site with matching ID
+            for site in sites_data.get("data", []):
+                if site.get("id") == site_id:
+                    base_url = site.get("baseURL")
+                    break
+            
+            if base_url:
+                self.logger.info(f"Found baseURL for site {site_id}: {base_url}")
+            else:
+                self.logger.warning(f"No baseURL found for site {site_id}")
+                
+            # This would be implemented to actually clone the Google Doc
+            return f"Would clone Google Doc at {google_doc_url} into site with baseURL: {base_url}"
+        
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Error fetching site data: {str(e)}")
+            return f"Error: Could not fetch site data - {str(e)}"
+    
     def clone_opportunity(self, site_id, oppt_file_path):
         """
         Clone an opportunity by reading from a JSON file and POSTing to the opportunities endpoint,
@@ -37,7 +79,8 @@ class AemSitesOptimizerBackoffice:
         """
         result = {
             "opportunity": None,
-            "suggestions": None
+            "suggestions": None,
+            "google_docs": []
         }
         
         try:
@@ -89,6 +132,19 @@ class AemSitesOptimizerBackoffice:
             if opportunity_id and 'suggestions' in oppt_data:
                 # 2. Second POST request - Add suggestions
                 suggestions = oppt_data['suggestions']
+                
+                # Check for Google Doc URLs in suggestions and clone them if needed
+                for suggestion in suggestions:
+                    if "data" in suggestion and "variations" in suggestion["data"]:
+                        for variation in suggestion["data"]["variations"]:
+                            variation_edit_url = variation.get("variationEditPageUrl")
+                            if variation_edit_url and variation_edit_url.startswith("https://docs.google.com"):
+                                # Call the placeholder method for cloning Google Doc
+                                doc_result = self.clone_google_doc(google_doc_url=variation_edit_url, site_id=site_id)
+                                result["google_docs"].append({
+                                    "url": variation_edit_url,
+                                    "result": doc_result
+                                })
                 
                 # Update opportunityId in each suggestion
                 for suggestion in suggestions:
@@ -147,3 +203,9 @@ if __name__ == "__main__":
         print(json.dumps(result["suggestions"], indent=2))
     else:
         print("\nNo suggestions were added.")
+        
+    if result["google_docs"]:
+        print("\nGoogle Docs found and processed:")
+        for doc in result["google_docs"]:
+            print(f"- {doc['url']}")
+            print(f"  {doc['result']}")
