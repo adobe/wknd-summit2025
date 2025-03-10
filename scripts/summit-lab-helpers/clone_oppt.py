@@ -59,10 +59,13 @@ class AemSitesOptimizerBackoffice:
                 "origin": opportunity.get("origin", "AUTOMATION"),
                 "title": opportunity.get("title", ""),
                 "description": opportunity.get("description", ""),
-                "guidance": opportunity.get("guidance", {}),
                 "tags": opportunity.get("tags", []),
-                "data": opportunity.get("data", {})
+                "data": opportunity.get("data", {}),
             }
+            
+            # Only add guidance if it exists in the opportunity
+            if "guidance" in opportunity:
+                payload["guidance"] = opportunity.get("guidance")
             
             # Prepare headers with token if provided
             headers = {}
