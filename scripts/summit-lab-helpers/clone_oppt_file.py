@@ -84,6 +84,68 @@ class GoogleDocCloner:
         self.logger.error(f"Could not extract document ID from URL: {google_doc_url}")
         return None
     
+    def _get_file_name(self, doc_id):
+        """
+        Get the original filename of a Google Doc
+        
+        Args:
+            doc_id (str): Google Doc ID
+            
+        Returns:
+            str: Original filename or None if not found
+        """
+        if not self.drive_service:
+            self.logger.info(f"Placeholder: Would get filename for doc ID {doc_id}")
+            return f"Placeholder Document {doc_id}"
+            
+        try:
+            file_metadata = self.drive_service.files().get(
+                fileId=doc_id, 
+                fields='name'
+            ).execute()
+            file_name = file_metadata.get('name')
+            self.logger.info(f"Original filename for {doc_id}: {file_name}")
+            return file_name
+        except Exception as e:
+            self.logger.error(f"Error getting filename: {str(e)}")
+            return None
+    
+    def _file_exists_in_folder(self, folder_id, file_name):
+        """
+        Check if a file with the given name exists in the specified folder
+        
+        Args:
+            folder_id (str): Folder ID to check
+            file_name (str): Filename to look for
+            
+        Returns:
+            str: File ID if exists, None otherwise
+        """
+        if not self.drive_service:
+            self.logger.info(f"Placeholder: Would check if '{file_name}' exists in folder {folder_id}")
+            return None
+            
+        try:
+            query = f"name = '{file_name}' and '{folder_id}' in parents and trashed = false"
+            response = self.drive_service.files().list(
+                q=query,
+                spaces='drive',
+                fields='files(id, name)',
+                pageToken=None
+            ).execute()
+            
+            files = response.get('files', [])
+            if files:
+                self.logger.info(f"File '{file_name}' already exists in folder {folder_id} with ID {files[0].get('id')}")
+                return files[0].get('id')
+            else:
+                self.logger.info(f"File '{file_name}' does not exist in folder {folder_id}")
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"Error checking if file exists: {str(e)}")
+            return None
+    
     def _extract_target_folder_from_base_url(self, base_url):
         """
         Extract target folder from base URL
@@ -113,18 +175,18 @@ class GoogleDocCloner:
         
         return None
     
-    def _find_folder_id_by_name(self, folder_name):
+    def _get_or_create_folder_id_by_name(self, folder_name):
         """
-        Find Google Drive folder ID by name within the lab-337 folder
+        Get or create a Google Drive folder by name within the lab-337 folder
         
         Args:
-            folder_name (str): Folder name to find
+            folder_name (str): Folder name to find or create
             
         Returns:
-            str: Folder ID if found, None otherwise
+            str: Folder ID of the found or created folder, None if failed
         """
         if not self.drive_service:
-            self.logger.info(f"Placeholder: Would find folder ID for '{folder_name}'")
+            self.logger.info(f"Placeholder: Would find or create folder '{folder_name}'")
             return f"placeholder-folder-id-{folder_name}"
             
         try:
@@ -137,18 +199,35 @@ class GoogleDocCloner:
                 pageToken=None
             ).execute()
             
-            for folder in response.get('files', []):
-                self.logger.info(f"Found folder: {folder.get('name')} ({folder.get('id')})")
-                return folder.get('id')
-                
-            self.logger.warning(f"No folder found with name '{folder_name}'")
-            return None
+            # Check if the folder already exists
+            files = response.get('files', [])
+            if files:
+                folder_id = files[0].get('id')
+                self.logger.info(f"Found existing folder: {folder_name} ({folder_id})")
+                return folder_id
+            
+            # If folder does not exist, create it
+            self.logger.info(f"Folder '{folder_name}' not found. Creating new folder.")
+            folder_metadata = {
+                'name': folder_name,
+                'mimeType': 'application/vnd.google-apps.folder',
+                'parents': [self.base_folder_id]
+            }
+            
+            created_folder = self.drive_service.files().create(
+                body=folder_metadata,
+                fields='id'
+            ).execute()
+            
+            new_folder_id = created_folder.get('id')
+            self.logger.info(f"Created new folder: {folder_name} ({new_folder_id})")
+            return new_folder_id
             
         except Exception as e:
-            self.logger.error(f"Error finding folder: {str(e)}")
+            self.logger.error(f"Error finding or creating folder: {str(e)}")
             return None
     
-    def clone_doc_to_folder(self, doc_id, target_folder_id, new_title=None):
+    def clone_doc_to_folder(self, doc_id, target_folder_id, new_title=None, override=False):
         """
         Clone a Google Doc to a target folder
         
@@ -156,6 +235,7 @@ class GoogleDocCloner:
             doc_id (str): Google Doc ID to clone
             target_folder_id (str): Target folder ID
             new_title (str, optional): New title for the cloned document
+            override (bool, optional): Whether to override existing files with the same name
             
         Returns:
             str: ID of the cloned document or None if operation failed
@@ -172,6 +252,19 @@ class GoogleDocCloner:
                     fields='name'
                 ).execute()
                 new_title = file_metadata.get('name', f"Copy of document {doc_id}")
+            
+            # Check if a file with the same name already exists in the target folder
+            existing_file_id = self._file_exists_in_folder(target_folder_id, new_title)
+            
+            if existing_file_id:
+                if override:
+                    # Delete the existing file if override is True
+                    self.logger.info(f"Deleting existing file '{new_title}' with ID {existing_file_id}")
+                    self.drive_service.files().delete(fileId=existing_file_id).execute()
+                else:
+                    # If override is False, return the existing file ID
+                    self.logger.info(f"File '{new_title}' already exists and override=False. Returning existing file ID.")
+                    return existing_file_id
             
             # Create a copy in the target folder
             copied_file = self.drive_service.files().copy(
@@ -190,13 +283,14 @@ class GoogleDocCloner:
             self.logger.error(f"Error cloning document: {str(e)}")
             return None
     
-    def clone_google_doc(self, google_doc_url, base_url):
+    def clone_google_doc(self, google_doc_url, base_url, override=False):
         """
         Main method to clone a Google Doc to the target folder specified in the base URL
         
         Args:
             google_doc_url (str): URL of the Google Doc to clone
             base_url (str): Base URL from sites JSON containing the target folder
+            override (bool, optional): Whether to override existing files with the same name
             
         Returns:
             dict: Result of the operation with status and details
@@ -211,6 +305,14 @@ class GoogleDocCloner:
                 "error": f"Could not extract document ID from URL: {google_doc_url}"
             }
         
+        # Get the original filename of the document
+        original_filename = self._get_file_name(doc_id)
+        if not original_filename:
+            return {
+                "success": False,
+                "error": f"Could not get filename for document: {doc_id}"
+            }
+        
         # Extract target folder from base URL
         target_folder = self._extract_target_folder_from_base_url(base_url)
         if not target_folder:
@@ -219,16 +321,16 @@ class GoogleDocCloner:
                 "error": f"Could not extract target folder from base URL: {base_url} or it's an _adobe_presenters folder"
             }
         
-        # Find the folder ID for the target folder
-        target_folder_id = self._find_folder_id_by_name(target_folder)
+        # Find or create the folder ID for the target folder
+        target_folder_id = self._get_or_create_folder_id_by_name(target_folder)
         if not target_folder_id:
             return {
                 "success": False,
-                "error": f"Could not find folder ID for target folder: {target_folder}"
+                "error": f"Could not find or create folder ID for target folder: {target_folder}"
             }
         
         # Clone the document to the target folder
-        cloned_doc_id = self.clone_doc_to_folder(doc_id, target_folder_id)
+        cloned_doc_id = self.clone_doc_to_folder(doc_id, target_folder_id, original_filename, override)
         if not cloned_doc_id:
             return {
                 "success": False,
@@ -238,6 +340,7 @@ class GoogleDocCloner:
         return {
             "success": True,
             "original_doc_id": doc_id,
+            "original_filename": original_filename,
             "target_folder": target_folder,
             "target_folder_id": target_folder_id,
             "cloned_doc_id": cloned_doc_id,
@@ -249,17 +352,17 @@ def main():
     """Example usage of the GoogleDocCloner class"""
     # Example URLs
     google_doc_url = "https://docs.google.com/document/d/1WcaYMcb-jtkrWhIgTKFDa55F8l3P6HxRbiPiuqqrQQ0/edit?tab=t.0"
-    base_url = "https://main--wknd-summit2025--adobe.aem.live/lab-337/000/"
+    base_url = "https://main--wknd-summit2025--adobe.aem.live/lab-337/105/"
     
     # Create an instance of GoogleDocCloner
     cloner = GoogleDocCloner()
     
     # Clone the Google Doc
-    result = cloner.clone_google_doc(google_doc_url, base_url)
+    result = cloner.clone_google_doc(google_doc_url, base_url, override=False)
     
     # Print the result
     if result["success"]:
-        print(f"Successfully cloned document to folder {result['target_folder']}")
+        print(f"Successfully cloned document '{result['original_filename']}' to folder {result['target_folder']}")
         print(f"New document URL: {result['doc_url']}")
     else:
         print(f"Failed to clone document: {result.get('error')}")

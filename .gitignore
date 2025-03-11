@@ -3,5 +3,6 @@ coverage/*
 logs/*
 node_modules/*
 .idea
-
+credentials.json
 helix-importer-ui
+__pycache__/
