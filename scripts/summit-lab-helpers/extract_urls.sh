@@ -5,15 +5,13 @@ show_help() {
     echo "Usage: This script extracts 'id' and 'baseURL' fields from JSON input and creates a CSV file."
     echo
     echo "The script expects JSON input from stdin. You can use it with curl like this:"
-    echo "  curl -s 'https://spacecat.experiencecloud.live/api/v1/organizations/d488fc90-d009-412c-82a1-70b338b1869c/sites/' -H 'Authorization: Bearer $ASO_TOKEN' | ./extract_urls.sh"
+    echo "  curl -s https://spacecat.experiencecloud.live/api/v1/organizations/d488fc90-d009-412c-82a1-70b338b1869c/sites/ -H "Authorization: Bearer $ASO_TOKEN" | ./extract_urls.sh"
     echo
     echo "Example with sample JSON data:"
     echo "  echo '[{\"id\":\"123\",\"baseURL\":\"https://example.com\"}]' | ./extract_urls.sh"
     echo
     echo "Options:"
     echo "  -h    Show this help message"
-    echo "  curl -i https://spacecat.experiencecloud.live/api/v1/organizations/d488fc90-d009-412c-82a1-70b338b1869c/sites/ -H "Authorization: $ASO_TOKEN""
-    echo "  curl -i https://spacecat.experiencecloud.live/api/v1/organizations/d488fc90-d009-412c-82a1-70b338b1869c/sites/ -H "Authorization: Bearer $ASO_TOKEN"
 }
 
 # Handle command line arguments
