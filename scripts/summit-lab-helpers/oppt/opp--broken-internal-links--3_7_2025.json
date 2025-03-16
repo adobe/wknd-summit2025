@@ -33,7 +33,7 @@
                 ],
                 "trafficDomain": "10000",
                 "aiRationale": "found new link matching the source",
-                "urlFrom": "main--wknd-summit2025--adobe.aem",
+                "urlFrom": "https://main--wknd-summit2025--adobe.aem.live/",
                 "urlTo": "https://main--wknd-summit2025--adobe.aem.page/adventures/new-zealand-climbing",
                 "priority": "high"
             },

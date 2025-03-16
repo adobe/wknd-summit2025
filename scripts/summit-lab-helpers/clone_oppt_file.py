@@ -175,12 +175,12 @@ class GoogleDocCloner:
         
         return None
     
-    def _get_or_create_folder_id_by_name(self, folder_name):
+    def get_or_create_folder_id_by_name(self, folder_name):
         """
         Get or create a Google Drive folder by name within the lab-337 folder
         
         Args:
-            folder_name (str): Folder name to find or create
+            folder_name (str): Folder name to find or create (always in 3-digit format, e.g. "001")
             
         Returns:
             str: Folder ID of the found or created folder, None if failed
@@ -190,7 +190,7 @@ class GoogleDocCloner:
             return f"placeholder-folder-id-{folder_name}"
             
         try:
-            # Search for the folder within the lab-337 parent folder
+            # Search for the folder with the exact name (always with leading zeros)
             query = f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' and '{self.base_folder_id}' in parents and trashed = false"
             response = self.drive_service.files().list(
                 q=query,
@@ -206,7 +206,7 @@ class GoogleDocCloner:
                 self.logger.info(f"Found existing folder: {folder_name} ({folder_id})")
                 return folder_id
             
-            # If folder does not exist, create it
+            # If folder does not exist, create it (with leading zeros intact)
             self.logger.info(f"Folder '{folder_name}' not found. Creating new folder.")
             folder_metadata = {
                 'name': folder_name,
@@ -322,7 +322,7 @@ class GoogleDocCloner:
             }
         
         # Find or create the folder ID for the target folder
-        target_folder_id = self._get_or_create_folder_id_by_name(target_folder)
+        target_folder_id = self.get_or_create_folder_id_by_name(target_folder)
         if not target_folder_id:
             return {
                 "success": False,
