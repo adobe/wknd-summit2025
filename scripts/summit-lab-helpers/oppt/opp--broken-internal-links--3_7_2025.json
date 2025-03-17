@@ -32,9 +32,9 @@
                     "https://main--wknd-summit2025--adobe.aem.live/adventures/climbing-new-zealand"
                 ],
                 "trafficDomain": "10000",
-                "aiRationale": "found new link matching the source",
+                "aiRationale": "Broken links damage SEO and user experience. Based on the keywords in the broken target URL, we found matching content in the suggested links. Please review them first.",
                 "urlFrom": "https://main--wknd-summit2025--adobe.aem.live/",
-                "urlTo": "https://main--wknd-summit2025--adobe.aem.page/adventures/new-zealand-climbing",
+                "urlTo": "https://main--wknd-summit2025--adobe.aem.live/adventures/new-zealand-climbing",
                 "priority": "high"
             },
             "createdAt": "2025-03-07T20:18:44.628Z",

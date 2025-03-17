@@ -6,6 +6,7 @@ import requests
 import sys
 import base64
 import argparse
+import re
 
 # Check if ASO_TOKEN is set
 if "ASO_TOKEN" not in os.environ:
@@ -32,6 +33,15 @@ except Exception as e:
     print(f"Error initializing GoogleDocCloner: {e}")
     print("Make sure credentials.json exists and is valid")
     sys.exit(1)
+
+# Import the AemSitesOptimizerBackoffice class for opportunity handling
+try:
+    from clone_oppt import AemSitesOptimizerBackoffice
+    print("Successfully imported AemSitesOptimizerBackoffice for opportunity management")
+except ImportError as e:
+    print(f"Warning: Could not import AemSitesOptimizerBackoffice: {e}")
+    print("Opportunity synchronization will not be available")
+    AemSitesOptimizerBackoffice = None
 
 def check_site_exists(base_url):
     """
@@ -82,6 +92,9 @@ def get_or_create_config(site_id, site_num):
     Returns:
         dict: The result of the operation with status and details
     """
+    # Import re for regex matching
+    import re
+    
     print(f"Checking Google Drive configuration for site ID: {site_id}")
     
     # 1. Get the current site configuration
@@ -106,35 +119,89 @@ def get_or_create_config(site_id, site_num):
         content_config = hlx_config.get('content', {})
         source_config = content_config.get('source', {})
         
-        if source_config.get('type') == 'drive.google':
-            print(f"Site already has Google Drive configuration: {source_config.get('url')}")
-            return {
-                "success": True,
-                "message": "Google Drive configuration already exists",
-                "config": source_config
-            }
-        
-        # 3. Get or create the folder for the site number (always with 3 digits and leading zeros)
-        folder_id = doc_cloner.get_or_create_folder_id_by_name(site_num)
-        if not folder_id:
+        # Get the expected folder ID for this site number
+        root_folder_id = "1nljb8SfLhSWMHiE-kTUl3b-93XmYH_Wg"
+        expected_folder_id = doc_cloner.get_or_create_folder_id_by_name(site_num)
+        # expected_folder_id = root_folder_id  # override it for testing
+        if not expected_folder_id:
             return {
                 "success": False,
                 "error": f"Could not find or create Google Drive folder for site number: {site_num}"
             }
         
-        # 4. Create the updated configuration
+        expected_url = f"https://drive.google.com/drive/u/0/folders/{expected_folder_id}"
+        
+        if source_config.get('type') == 'drive.google':
+            current_url = source_config.get('url', '')
+            print(f"Site has Google Drive configuration: {current_url}")
+            
+            # Extract the folder ID from the current URL
+            match = re.search(r'folders/([a-zA-Z0-9_-]+)', current_url)
+            current_folder_id = match.group(1) if match else None
+            
+            # Check if the current URL points to the correct folder
+            if current_folder_id == expected_folder_id:
+                print(f"Google Drive configuration is already correct")
+                return {
+                    "success": True,
+                    "message": "Google Drive configuration already exists and is correct",
+                    "config": source_config
+                }
+            else:
+                print(f"Google Drive configuration exists but points to the wrong folder")
+                print(f"Current folder ID: {current_folder_id}")
+                print(f"Expected folder ID: {expected_folder_id}")
+                
+                # Update the configuration with the correct folder
+                new_hlx_config = {
+                    "hlxConfig": {
+                        "content": {
+                            "source": {
+                                "type": "drive.google", 
+                                "url": expected_url
+                            }
+                        }
+                    }
+                }
+                
+                # Update the site configuration with PATCH request
+                patch_response = requests.patch(
+                    get_url,
+                    json=new_hlx_config,
+                    headers=headers
+                )
+                
+                # Check if PATCH request was successful
+                if patch_response.status_code >= 200 and patch_response.status_code < 300:
+                    print(f"Successfully updated site with the correct Google Drive configuration")
+                    return {
+                        "success": True,
+                        "message": "Successfully updated Google Drive configuration to the correct folder",
+                        "config": new_hlx_config['hlxConfig']['content']['source']
+                    }
+                else:
+                    print(f"Failed to update site configuration. Status code: {patch_response.status_code}")
+                    print(f"Response: {patch_response.text}")
+                    return {
+                        "success": False,
+                        "error": f"Failed to update site configuration. Status code: {patch_response.status_code}"
+                    }
+        
+        # If no Google Drive configuration exists, create one
+        
+        # 3. Create the updated configuration
         new_hlx_config = {
             "hlxConfig": {
                 "content": {
                     "source": {
                         "type": "drive.google",
-                        "url": f"https://drive.google.com/drive/u/0/folders/{folder_id}"
+                        "url": expected_url
                     }
                 }
             }
         }
         
-        # 5. Update the site configuration with PATCH request
+        # 4. Update the site configuration with PATCH request
         patch_response = requests.patch(
             get_url,
             json=new_hlx_config,
@@ -302,6 +369,461 @@ def sync_gdrive(start_folder=0, end_folder=200, report_path=None, files_to_sync=
     
     return success_count, failure_count, results
 
+def sync_opportunities(start_site=0, end_site=200, token=None, report_path=None):
+    """
+    Synchronize opportunities to sites in the specified range
+    
+    This function:
+    1. Loads opportunity definitions from JSON files
+    2. Uses AemSitesOptimizerBackoffice to clone opportunities to each site
+    3. Generates a detailed report of the synchronization process
+    
+    Args:
+        start_site (int): The starting site number
+        end_site (int): The ending site number (exclusive)
+        token (str): The authorization token for the AEM Sites Optimizer API
+        report_path (str, optional): Path to save the sync report to
+        
+    Returns:
+        dict: Results of the opportunity synchronization
+    """
+    if AemSitesOptimizerBackoffice is None:
+        print("\nOpportunity synchronization is not available because AemSitesOptimizerBackoffice could not be imported.")
+        return {"error": "AemSitesOptimizerBackoffice not available"}
+    
+    if not token:
+        print("\nError: Token is required for opportunity synchronization.")
+        return {"error": "Token is required"}
+    
+    print(f"\nSynchronizing opportunities for sites from {start_site:03d} to {end_site-1:03d}...")
+    
+    # Opportunity definitions
+    opportunity_files = {
+        "broken_links": "./oppt/opp--broken-internal-links--3_7_2025.json",
+        "low_ctr": "./oppt/opp--high-organic-low-ctr--3_7_2025.json"
+    }
+    
+    # Initialize the backoffice client
+    backoffice = AemSitesOptimizerBackoffice(token=token)
+    
+    # Track results
+    results = {
+        "summary": {
+            "total_sites": end_site - start_site,
+            "success_count": 0,
+            "failure_count": 0
+        },
+        "sites": {}
+    }
+    
+    # Verify the broken links opportunity file exists
+    if not os.path.exists(opportunity_files["broken_links"]):
+        print(f"Error: Broken links opportunity file not found at {opportunity_files['broken_links']}")
+        return {"error": f"Opportunity file not found: {opportunity_files['broken_links']}"}
+    
+    # Process each site
+    for i, num in enumerate(range(start_site, end_site)):
+        site_num = f"{num:03d}"
+        site_base_url = f"https://main--wknd-summit2025--adobe.aem.live/lab-337/{site_num}/"
+        
+        # Show progress
+        progress = (i + 1) / (end_site - start_site) * 100
+        print(f"\n[{progress:.1f}%] Processing site {site_num}...")
+        
+        # Initialize site results
+        site_results = {
+            "site_num": site_num,
+            "base_url": site_base_url,
+            "site_id": None,
+            "opportunities": {}
+        }
+        
+        # Get site ID
+        try:
+            # Encode the base URL to base64
+            base64_url = base64.b64encode(site_base_url.encode()).decode()
+            check_url = f"https://spacecat.experiencecloud.live/api/v1/sites/by-base-url/{base64_url}"
+            response = requests.get(check_url, headers=headers)
+            
+            if response.status_code == 200:
+                site_data = response.json()
+                site_id = site_data.get('id')
+                if site_id:
+                    site_results["site_id"] = site_id
+                    print(f"  Found site ID: {site_id}")
+                    
+                    # Delete existing opportunities first to avoid duplicates
+                    delete_result = _delete_opportunities(site_id, token)
+                    site_results["deleted_opportunities"] = delete_result
+                    if delete_result.get("success", False):
+                        print(f"  ✓ Deleted {delete_result.get('count', 0)} existing opportunities")
+                    else:
+                        print(f"  ⚠ Failed to delete some existing opportunities: {delete_result.get('error', 'Unknown error')}")
+                    
+                    # 1. Broken internal links opportunity
+                    print(f"  Syncing 'Broken Internal Links' opportunity...")
+                    try:
+                        broken_links_result = backoffice.clone_opportunity(
+                            site_id=site_id,
+                            oppt_file_path=opportunity_files["broken_links"]
+                        )
+                        
+                        site_results["opportunities"]["broken_links"] = {
+                            "success": True,
+                            "details": broken_links_result
+                        }
+                        print(f"  ✓ Successfully synced 'Broken Internal Links' opportunity")
+                        
+                    except Exception as oppt_e:
+                        site_results["opportunities"]["broken_links"] = {
+                            "success": False,
+                            "error": str(oppt_e)
+                        }
+                        print(f"  ✗ Failed to sync 'Broken Internal Links' opportunity: {str(oppt_e)}")
+                    
+                    # 2. High organic traffic low CTR opportunity
+                    if os.path.exists(opportunity_files["low_ctr"]):
+                        print(f"  Syncing 'High Organic Traffic Low CTR' opportunity...")
+                        try:
+                            low_ctr_result = backoffice.clone_opportunity(
+                                site_id=site_id,
+                                oppt_file_path=opportunity_files["low_ctr"]
+                            )
+                            
+                            site_results["opportunities"]["low_ctr"] = {
+                                "success": True,
+                                "details": low_ctr_result
+                            }
+                            print(f"  ✓ Successfully synced 'High Organic Traffic Low CTR' opportunity")
+                            
+                        except Exception as oppt_e:
+                            site_results["opportunities"]["low_ctr"] = {
+                                "success": False,
+                                "error": str(oppt_e)
+                            }
+                            print(f"  ✗ Failed to sync 'High Organic Traffic Low CTR' opportunity: {str(oppt_e)}")
+                    else:
+                        print(f"  ⚠ Skipping 'High Organic Traffic Low CTR' opportunity (file not found)")
+                        site_results["opportunities"]["low_ctr"] = {
+                            "success": False,
+                            "error": f"File not found: {opportunity_files['low_ctr']}"
+                        }
+                    
+                    # Update success/failure count
+                    if any(oppt["success"] for oppt in site_results["opportunities"].values()):
+                        results["summary"]["success_count"] += 1
+                    else:
+                        results["summary"]["failure_count"] += 1
+                else:
+                    print(f"  ✗ Failed to get site ID from response")
+                    site_results["error"] = "Failed to get site ID from response"
+                    results["summary"]["failure_count"] += 1
+            else:
+                print(f"  ✗ Site not found or error occurred: {response.status_code}")
+                site_results["error"] = f"Site not found or error occurred: {response.status_code}"
+                results["summary"]["failure_count"] += 1
+        
+        except Exception as e:
+            print(f"  ✗ Error processing site {site_num}: {str(e)}")
+            site_results["error"] = str(e)
+            results["summary"]["failure_count"] += 1
+        
+        # Add site results to overall results
+        results["sites"][site_num] = site_results
+        
+        # Add a small delay to avoid overwhelming the API
+        time.sleep(0.5)
+    
+    # Print summary
+    print(f"\nOpportunity synchronization complete.")
+    print(f"Successfully processed: {results['summary']['success_count']} sites")
+    print(f"Failed to process: {results['summary']['failure_count']} sites")
+    print(f"Total sites processed: {results['summary']['total_sites']}")
+    
+    # Save report if requested
+    if report_path:
+        try:
+            import json
+            with open(report_path, 'w') as f:
+                json.dump(results, f, indent=2)
+            print(f"Opportunity sync report saved to: {report_path}")
+        except Exception as e:
+            print(f"Failed to save opportunity sync report: {e}")
+    
+    return results
+
+def _delete_opportunities(site_id, token):
+    """
+    Private method to delete all existing opportunities for a site
+    
+    Args:
+        site_id (str): The site ID
+        token (str): The authorization token for the AEM Sites Optimizer API
+        
+    Returns:
+        dict: Results of the deletion operation
+    """
+    result = {
+        "success": True,
+        "count": 0,
+        "deleted": [],
+        "failed": []
+    }
+    
+    # Create authorization headers with token
+    auth_headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        # Step 1: List all opportunities for the site
+        list_url = f"https://spacecat.experiencecloud.live/api/v1/sites/{site_id}/opportunities"
+        list_response = requests.get(list_url, headers=auth_headers)
+        
+        if list_response.status_code != 200:
+            result["success"] = False
+            result["error"] = f"Failed to list opportunities: Status code {list_response.status_code}"
+            return result
+        
+        opportunities = list_response.json()
+        
+        # If no opportunities found, return early
+        if not opportunities or len(opportunities) == 0:
+            return result
+        
+        # Step 2: Delete each opportunity
+        for opportunity in opportunities:
+            oppt_id = opportunity.get("id")
+            if not oppt_id:
+                continue
+                
+            try:
+                # Delete the opportunity
+                delete_url = f"https://spacecat.experiencecloud.live/api/v1/sites/{site_id}/opportunities/{oppt_id}"
+                delete_response = requests.delete(delete_url, headers=auth_headers)
+                
+                # Check if deletion was successful
+                if delete_response.status_code >= 200 and delete_response.status_code < 300:
+                    result["deleted"].append({
+                        "id": oppt_id,
+                        "status": delete_response.status_code
+                    })
+                    result["count"] += 1
+                else:
+                    result["failed"].append({
+                        "id": oppt_id,
+                        "status": delete_response.status_code,
+                        "response": delete_response.text
+                    })
+                    
+            except Exception as e:
+                result["failed"].append({
+                    "id": oppt_id,
+                    "error": str(e)
+                })
+        
+        # Set success to False if any deletion failed
+        if result["failed"]:
+            result["success"] = False
+            result["error"] = f"Failed to delete {len(result['failed'])} opportunities"
+        
+    except Exception as e:
+        result["success"] = False
+        result["error"] = f"Error deleting opportunities: {str(e)}"
+    
+    return result
+
+def update_sites_csv(output_file="sites.csv", org_id="d488fc90-d009-412c-82a1-70b338b1869c", start_site=None, end_site=None):
+    """
+    Update a CSV file with site information including ID, baseURL, and baseDocURL
+    
+    This function:
+    1. Retrieves all sites for the given organization
+    2. For each site, extracts its ID and baseURL
+    3. If the site number is within the start_site and end_site range, attempts to find its Google Drive document
+    4. Writes all this information to a CSV file
+    
+    Args:
+        output_file (str): Path to the output CSV file
+        org_id (str): The organization ID
+        start_site (int, optional): Starting site number to update (inclusive)
+        end_site (int, optional): Ending site number to update (exclusive)
+        
+    Returns:
+        dict: Results of the operation with success status and details
+    """
+    import csv
+    import re
+    import os
+    
+    print(f"\nUpdating sites CSV file: {output_file}")
+    if start_site is not None and end_site is not None:
+        print(f"Updating baseDocURL for sites from {start_site:03d} to {end_site-1:03d} only")
+    
+    # Results tracking
+    results = {
+        "success": True,
+        "total_sites": 0,
+        "sites_processed": 0,
+        "sites_with_doc_url": 0,
+        "errors": []
+    }
+    
+    # Create initial CSV file if it doesn't exist
+    if not os.path.exists(output_file):
+        try:
+            with open(output_file, 'w', newline='') as csvfile:
+                fieldnames = ['id', 'baseURL', 'baseDocURL']
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+            print(f"Created new CSV file: {output_file}")
+        except Exception as e:
+            print(f"Error creating CSV file: {str(e)}")
+            results["success"] = False
+            results["errors"].append(f"Error creating CSV file: {str(e)}")
+            return results
+    
+    try:
+        # Step 1: Get all sites for the organization
+        sites_url = f"https://spacecat.experiencecloud.live/api/v1/organizations/{org_id}/sites"
+        response = requests.get(sites_url, headers=headers)
+        
+        if response.status_code != 200:
+            print(f"Error retrieving sites: Status code {response.status_code}")
+            print(f"Response: {response.text}")
+            results["success"] = False
+            results["errors"].append(f"Failed to retrieve sites: {response.status_code}")
+            return results
+        
+        sites = response.json()
+        results["total_sites"] = len(sites)
+        
+        print(f"Retrieved {len(sites)} sites from the organization")
+        
+        # Read the existing CSV content into memory
+        existing_data = {}
+        try:
+            with open(output_file, 'r', newline='') as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    existing_data[row['id']] = row
+        except Exception as e:
+            print(f"Warning: Could not read existing CSV data: {str(e)}")
+        
+        # Create a new list to hold updated entries
+        updated_entries = []
+            
+        # Step 2: Process each site
+        for site in sites:
+            site_id = site.get('id')
+            base_url = site.get('baseURL')
+            
+            # Initialize with existing data or create new entry
+            entry = existing_data.get(site_id, {'id': site_id, 'baseURL': base_url, 'baseDocURL': ''})
+            
+            # Extract site number from baseURL (assuming the format like .../lab-337/123/)
+            site_num = None
+            if base_url:
+                match = re.search(r'/lab-337/(\d+)/?', base_url)
+                if match:
+                    site_num = match.group(1)
+                    numeric_site_num = int(site_num)
+                    
+                    # Only process sites within the specified range
+                    if (start_site is None or end_site is None or 
+                        (numeric_site_num >= start_site and numeric_site_num < end_site)):
+                        
+                        results["sites_processed"] += 1
+                        print(f"Processing site {site_num} (ID: {site_id})")
+                        
+                        # Try to find the Google Drive folder and document
+                        try:
+                            # Get the site configuration to find the Google Drive folder
+                            config_url = f"https://spacecat.experiencecloud.live/api/v1/sites/{site_id}"
+                            config_response = requests.get(config_url, headers=headers)
+                            
+                            if config_response.status_code == 200:
+                                site_config = config_response.json()
+                                
+                                # Extract Google Drive folder URL from hlxConfig
+                                hlx_config = site_config.get('hlxConfig', {})
+                                content_config = hlx_config.get('content', {})
+                                source_config = content_config.get('source', {})
+                                
+                                if source_config.get('type') == 'drive.google':
+                                    folder_url = source_config.get('url')
+                                    
+                                    if folder_url:
+                                        # Extract folder ID from the URL
+                                        folder_id_match = re.search(r'folders/([a-zA-Z0-9_-]+)', folder_url)
+                                        if folder_id_match:
+                                            folder_id = folder_id_match.group(1)
+                                            
+                                            # Now find the "index" document in this folder
+                                            # Use the doc_cloner to find the document in the Google Drive folder
+                                            try:
+                                                # Check if the doc_cloner has a drive_service (Google Drive API initialized)
+                                                if doc_cloner.drive_service:
+                                                    # Query for a document named "index" or "index.docx" or similar in the folder
+                                                    query = f"name contains 'index' and '{folder_id}' in parents and mimeType contains 'document' and trashed = false"
+                                                    response = doc_cloner.drive_service.files().list(
+                                                        q=query,
+                                                        spaces='drive',
+                                                        fields='files(id, name, webViewLink)',
+                                                        pageToken=None
+                                                    ).execute()
+                                                    
+                                                    # Get the first matching document
+                                                    files = response.get('files', [])
+                                                    if files:
+                                                        # Use the actual document link
+                                                        doc_id = files[0].get('id')
+                                                        entry['baseDocURL'] = f"https://docs.google.com/document/d/{doc_id}/edit"
+                                                        print(f"  Found index document for site {site_id}: {files[0].get('name')}")
+                                                    else:
+                                                        # Fallback: Construct expected URL for new document
+                                                        entry['baseDocURL'] = f"https://docs.google.com/document/create?folder={folder_id}&name=index"
+                                                        print(f"  No index document found for site {site_id}, providing creation URL")
+                                                else:
+                                                    # If Google Drive API not initialized, construct a placeholder URL
+                                                    entry['baseDocURL'] = f"https://drive.google.com/drive/folders/{folder_id}"
+                                                    print(f"  Drive API not available, providing folder URL for site {site_id}")
+                                                
+                                                results["sites_with_doc_url"] += 1
+                                            except Exception as doc_e:
+                                                print(f"  Error finding index document in folder {folder_id}: {str(doc_e)}")
+                                                # Fallback to folder URL
+                                                entry['baseDocURL'] = f"https://drive.google.com/drive/folders/{folder_id}"
+                        except Exception as e:
+                            print(f"Error processing site {site_id}: {str(e)}")
+                            results["errors"].append(f"Error for site {site_id}: {str(e)}")
+            
+            # Add the entry to our list
+            updated_entries.append(entry)
+        
+        # Step 3: Write all entries to the CSV file
+        with open(output_file, 'w', newline='') as csvfile:
+            fieldnames = ['id', 'baseURL', 'baseDocURL']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            
+            for entry in updated_entries:
+                writer.writerow(entry)
+        
+        print(f"CSV file updated successfully: {output_file}")
+        print(f"Total sites: {results['total_sites']}")
+        print(f"Sites processed for baseDocURL: {results['sites_processed']}")
+        print(f"Sites with document URLs: {results['sites_with_doc_url']}")
+        
+        return results
+    
+    except Exception as e:
+        print(f"Error updating sites CSV: {str(e)}")
+        results["success"] = False
+        results["errors"].append(str(e))
+        return results
+
 def main(start_num=2, end_num=4):
     """
     Main function to process sites
@@ -420,8 +942,20 @@ Examples:
   # Save sync report to a file
   uv run create_sites.py --skip-sites --report sync_results.json
 
-  # skip site creation and sync
+  # Skip site creation and sync
   uv run create_sites.py --skip-sites --skip-sync
+  
+  # Sync opportunities to sites (this will delete existing opportunities first)
+  uv run create_sites.py --skip-sites --skip-sync --sync-oppties
+  
+  # Sync opportunities to specific site range
+  uv run create_sites.py --skip-sites --skip-sync --sync-oppties --sync-start 10 --sync-end 20
+
+  # Main script with all options needed for lab
+  uv run create_sites.py --sync-oppties --sync-file "https://docs.google.com/document/d/18qZz0QZL1D69lvQP2eFL5q_hbEHKxJx1TAQBCmSyUCk/edit" --sync-file "https://docs.google.com/document/d/1JsI492epCL2b8AAACXUENxDebAABoBJa79wt53iz2-E/edit" --override --start 1 --end 2 --sync-start 1 --sync-end 2
+  
+  # Generate a CSV file with site information including Google Drive document URLs
+  uv run create_sites.py --skip-sites --skip-sync --start 0 --end 1 --update-sites-csv sites.csv
 ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -439,6 +973,13 @@ Examples:
     parser.add_argument('--sync-file', action='append', help='Google Doc URL to sync to each folder. Can be specified multiple times for multiple files')
     parser.add_argument('--override', action='store_true', help='When syncing files, override any existing files with the same name (default: False)')
     
+    # Opportunity synchronization arguments
+    parser.add_argument('--sync-oppties', action='store_true', help='Synchronize opportunities to sites')
+    parser.add_argument('--oppties-report', type=str, help='Save opportunity sync results to the specified JSON file')
+    
+    # CSV generation arguments
+    parser.add_argument('--update-sites-csv', type=str, help='Generate a CSV file with site information (ID, baseURL, baseDocURL)')
+    
     args = parser.parse_args()
     
     # Process sites if not skipped
@@ -453,4 +994,21 @@ Examples:
             report_path=args.report,
             files_to_sync=args.sync_file,
             files_override=args.override
+        ) 
+    
+    # Run opportunity synchronization if requested
+    if args.sync_oppties:
+        sync_opportunities(
+            start_site=args.sync_start,
+            end_site=args.sync_end,
+            token=token,
+            report_path=args.oppties_report or args.report
+        )
+        
+    # Generate sites CSV if requested
+    if args.update_sites_csv:
+        update_sites_csv(
+            output_file=args.update_sites_csv,
+            start_site=args.sync_start,
+            end_site=args.sync_end
         ) 
